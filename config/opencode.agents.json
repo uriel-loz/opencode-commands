@@ -20,7 +20,7 @@
     "top_p": 0.9
   },
   "review": {
-    "description": "Review plans, designs, and code proposals BEFORE implementation. Detect design flaws, security risks, and technical debt, and map required changes to specific files in the codebase. Use this after planning to validate the approach and identify impacted files before any code is written.",
+    "description": "Sanity-check a proposed fix before implementation. Validate likely root cause, confirm the smallest safe change, and flag only meaningful risks without expanding scope.",
     "mode": "subagent",
     "model": "github-copilot/gpt-5.4",
     "permission": {
@@ -41,7 +41,7 @@
     "top_p": 0.9
   },
   "task": {
-    "description": "Converts prior analysis or research into a structured, prioritized technical task list. Invoke after an analysis phase is complete.",
+    "description": "Turn validated analysis into the smallest useful implementation task list. Use after root cause is understood and concise execution-ready steps are needed without expanding scope.",
     "mode": "subagent",
     "model": "github-copilot/claude-sonnet-4.6",
     "permission": {
