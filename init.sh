@@ -31,8 +31,8 @@ MERGE_SCRIPT=$(cat <<'EOF'
 const fs = require("fs");
 const path = require("path");
 
-const configPath = process.argv[2];
-const repoAgentsPath = process.argv[3];
+const configPath = process.argv[1];
+const repoAgentsPath = process.argv[2];
 
 if (!fs.existsSync(configPath)) {
     const schema = { "$schema": "https://opencode.ai/config.json", "agent": {} };
