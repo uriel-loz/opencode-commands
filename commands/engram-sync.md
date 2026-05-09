@@ -1,3 +1,7 @@
+---
+description: Export Engram memories and commit them to the git repository
+---
+
 # Engram Sync
 
 Exporta las memorias de Engram y las guarda en git. Sigue estos pasos en orden.

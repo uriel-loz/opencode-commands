@@ -1,0 +1,80 @@
+{
+  "apply": {
+    "description": "Applies previously reviewed and approved code change proposals to the codebase. Invoke only after a review phase has concluded and changes are ready to be implemented.",
+    "mode": "subagent",
+    "model": "opencode-go/minimax-m2.7",
+    "permission": {
+      "bash": "ask",
+      "edit": "allow",
+      "glob": "allow",
+      "grep": "allow",
+      "lsp": "deny",
+      "read": "allow",
+      "task": "deny",
+      "todowrite": "deny",
+      "webfetch": "deny",
+      "websearch": "deny",
+      "write": "allow"
+    },
+    "temperature": 0.1,
+    "top_p": 0.9
+  },
+  "review": {
+    "description": "Review plans, designs, and code proposals BEFORE implementation. Detect design flaws, security risks, and technical debt, and map required changes to specific files in the codebase. Use this after planning to validate the approach and identify impacted files before any code is written.",
+    "mode": "subagent",
+    "model": "github-copilot/gpt-5.4",
+    "permission": {
+      "bash": "deny",
+      "edit": "deny",
+      "glob": "allow",
+      "grep": "allow",
+      "lsp": "deny",
+      "read": "allow",
+      "skill": "deny",
+      "task": "deny",
+      "todowrite": "deny",
+      "webfetch": "deny",
+      "websearch": "deny",
+      "write": "deny"
+    },
+    "temperature": 0.1,
+    "top_p": 0.9
+  },
+  "task": {
+    "description": "Converts prior analysis or research into a structured, prioritized technical task list. Invoke after an analysis phase is complete.",
+    "mode": "subagent",
+    "model": "github-copilot/claude-sonnet-4.6",
+    "permission": {
+      "bash": "deny",
+      "edit": "deny",
+      "glob": "allow",
+      "grep": "allow",
+      "read": "allow",
+      "write": "deny"
+    },
+    "temperature": 0.3,
+    "top_p": 0.9
+  },
+  "verify": {
+    "description": "Verifies that applied code matches the reviewed plan and directly corrects any discrepancies in the code. Invoke after changes have been applied by @apply.",
+    "mode": "subagent",
+    "model": "github-copilot/gpt-5.3-codex",
+    "permission": {
+      "bash": "ask",
+      "edit": "allow",
+      "glob": "allow",
+      "grep": "allow",
+      "lsp": "deny",
+      "read": "allow",
+      "skill": "deny",
+      "task": "deny",
+      "todowrite": "deny",
+      "webfetch": "deny",
+      "websearch": "deny",
+      "write": "allow"
+    },
+    "steps": 15,
+    "temperature": 0.1,
+    "top_p": 0.9
+  }
+}

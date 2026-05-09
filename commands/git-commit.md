@@ -1,3 +1,7 @@
+---
+description: Analyze changed files and generate a git commit on the current branch with Conventional Commits
+---
+
 # Git Commit
 
 Genera y ejecuta un commit siguiendo Conventional Commits. Sigue estos pasos en orden.
