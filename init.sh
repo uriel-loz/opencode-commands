@@ -50,13 +50,23 @@ agentKeys.forEach(key => {
     existing.agent[key] = repoAgents[key];
 });
 
+const mergeSkillPermission = (target, source) => {
+    Object.entries(source).forEach(([k, v]) => {
+        target[k] = v;
+    });
+};
+
 if (repoAgents.plan) {
     if (!existing.agent) existing.agent = {};
     if (!existing.agent.plan) existing.agent.plan = {};
     if (!existing.agent.plan.permission) existing.agent.plan.permission = {};
-    Object.entries(repoAgents.plan.permission.skill).forEach(([k, v]) => {
-        existing.agent.plan.permission.skill[k] = v;
-    });
+    mergeSkillPermission(existing.agent.plan.permission.skill, repoAgents.plan.permission.skill);
+}
+
+if (repoAgents.build) {
+    if (!existing.agent.build) existing.agent.build = {};
+    if (!existing.agent.build.permission) existing.agent.build.permission = {};
+    mergeSkillPermission(existing.agent.build.permission.skill, repoAgents.build.permission.skill);
 }
 
 fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));

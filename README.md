@@ -41,24 +41,36 @@ Esto hace:
    - Solo reemplaza/agrega los agentes del repo
    - Preserva intacto todo el resto de la configuración existente
 
-## Configuracion de skills para el agente `plan`
+## Configuracion de skills para `plan` y `build`
 
-Por defecto, el agente `plan` puede cargar cualquier skill. Si instalaste skills SDD (como `sdd-verify`, `sdd-tasks`, etc.), estas pueden activarse automaticamente cuando el agente `plan` menciona temas relacionados con "verificar" o "tareas".
+Por defecto, los agentes `plan` y `build` pueden cargar cualquier skill. Si instalaste skills SDD (como `sdd-verify`, `sdd-tasks`, etc.), estas pueden activarse automaticamente cuando el agente menciona temas relacionados con "verificar" o "tareas".
 
-Este repo incluye una configuracion que bloquea las skills `sdd-*` para el agente `plan`, permitiendo que uses `@task`, `@verify`, `@apply` y `@review` sin conflicto:
+Este repo incluye una configuracion que bloquea las skills `sdd-*` para ambos agentes, permitiendo que uses `@task`, `@verify`, `@apply` y `@review` sin conflicto:
 
 ```json
-"plan": {
-  "permission": {
-    "skill": {
-      "*": "allow",
-      "sdd-*": "deny"
+"agent": {
+  "plan": {
+    "permission": {
+      "skill": {
+        "*": "allow",
+        "sdd-*": "deny"
+      }
+    }
+  },
+  "build": {
+    "permission": {
+      "skill": {
+        "*": "allow",
+        "sdd-*": "deny"
+      }
     }
   }
 }
 ```
 
-Esto se integra automaticamente al ejecutar `init.sh`.
+Esto se integra automaticamente al ejecutar `init.sh` para `plan` y `build`.
+
+El agente `gentle-orchestrator` NO tiene esta restriccion, por lo que las skills SDD seguiran disponibles cuando uses ese orquestador.
 
 Si queres permitir una skill SDD especifica en `plan`, podes cambiarla a `"allow"` despues de la instalacion.
 
