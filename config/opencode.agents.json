@@ -1,4 +1,12 @@
 {
+  "plan": {
+    "permission": {
+      "skill": {
+        "*": "allow",
+        "sdd-*": "deny"
+      }
+    }
+  },
   "apply": {
     "description": "Applies previously reviewed and approved code change proposals to the codebase. Invoke only after a review phase has concluded and changes are ready to be implemented.",
     "mode": "subagent",

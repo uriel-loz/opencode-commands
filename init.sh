@@ -50,6 +50,15 @@ agentKeys.forEach(key => {
     existing.agent[key] = repoAgents[key];
 });
 
+if (repoAgents.plan) {
+    if (!existing.agent) existing.agent = {};
+    if (!existing.agent.plan) existing.agent.plan = {};
+    if (!existing.agent.plan.permission) existing.agent.plan.permission = {};
+    Object.entries(repoAgents.plan.permission.skill).forEach(([k, v]) => {
+        existing.agent.plan.permission.skill[k] = v;
+    });
+}
+
 fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
 console.log("   ✅ Agentes integrados: " + agentKeys.join(", "));
 EOF

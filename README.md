@@ -41,6 +41,27 @@ Esto hace:
    - Solo reemplaza/agrega los agentes del repo
    - Preserva intacto todo el resto de la configuración existente
 
+## Configuracion de skills para el agente `plan`
+
+Por defecto, el agente `plan` puede cargar cualquier skill. Si instalaste skills SDD (como `sdd-verify`, `sdd-tasks`, etc.), estas pueden activarse automaticamente cuando el agente `plan` menciona temas relacionados con "verificar" o "tareas".
+
+Este repo incluye una configuracion que bloquea las skills `sdd-*` para el agente `plan`, permitiendo que uses `@task`, `@verify`, `@apply` y `@review` sin conflicto:
+
+```json
+"plan": {
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "sdd-*": "deny"
+    }
+  }
+}
+```
+
+Esto se integra automaticamente al ejecutar `init.sh`.
+
+Si queres permitir una skill SDD especifica en `plan`, podes cambiarla a `"allow"` despues de la instalacion.
+
 ## Requisitos
 
 - `node` disponible en PATH (necesario para el merge de JSON)
