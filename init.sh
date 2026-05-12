@@ -45,29 +45,31 @@ const repoAgents = JSON.parse(fs.readFileSync(repoAgentsPath, "utf8"));
 
 if (!existing.agent) existing.agent = {};
 
-const agentKeys = Object.keys(repoAgents);
-agentKeys.forEach(key => {
-    existing.agent[key] = repoAgents[key];
-});
-
-const mergeSkillPermission = (target, source) => {
+const mergeDeep = (target, source) => {
     Object.entries(source).forEach(([k, v]) => {
-        target[k] = v;
+        if (v && typeof v === 'object' && !Array.isArray(v)) {
+            if (!target[k]) target[k] = {};
+            mergeDeep(target[k], v);
+        } else {
+            target[k] = v;
+        }
     });
 };
 
-if (repoAgents.plan) {
-    if (!existing.agent) existing.agent = {};
-    if (!existing.agent.plan) existing.agent.plan = {};
-    if (!existing.agent.plan.permission) existing.agent.plan.permission = {};
-    mergeSkillPermission(existing.agent.plan.permission.skill, repoAgents.plan.permission.skill);
-}
-
-if (repoAgents.build) {
-    if (!existing.agent.build) existing.agent.build = {};
-    if (!existing.agent.build.permission) existing.agent.build.permission = {};
-    mergeSkillPermission(existing.agent.build.permission.skill, repoAgents.build.permission.skill);
-}
+const agentKeys = Object.keys(repoAgents);
+agentKeys.forEach(key => {
+    if (!existing.agent[key]) {
+        existing.agent[key] = {};
+    }
+    if (key === 'plan' || key === 'build') {
+        if (repoAgents[key].permission) {
+            if (!existing.agent[key].permission) existing.agent[key].permission = {};
+            mergeDeep(existing.agent[key].permission, repoAgents[key].permission);
+        }
+    } else {
+        Object.assign(existing.agent[key], repoAgents[key]);
+    }
+});
 
 fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
 console.log("   ✅ Agentes integrados: " + agentKeys.join(", "));

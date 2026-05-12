@@ -41,7 +41,7 @@ Esto hace:
    - Solo reemplaza/agrega los agentes del repo
    - Preserva intacto todo el resto de la configuración existente
 
-## Configuracion de skills para `plan` y `build`
+## Configuracion de skills y bash para `plan` y `build`
 
 Por defecto, los agentes `plan` y `build` pueden cargar cualquier skill. Si instalaste skills SDD (como `sdd-verify`, `sdd-tasks`, etc.), estas pueden activarse automaticamente cuando el agente menciona temas relacionados con "verificar" o "tareas".
 
@@ -62,15 +62,26 @@ Este repo incluye una configuracion que bloquea las skills `sdd-*` para ambos ag
       "skill": {
         "*": "allow",
         "sdd-*": "deny"
+      },
+      "bash": {
+        "*": "ask",
+        "git status*": "allow",
+        "git log*": "allow",
+        "git diff*": "allow",
+        "git add*": "allow",
+        "git commit*": "deny",
+        "git push*": "deny"
       }
     }
   }
 }
 ```
 
-Esto se integra automaticamente al ejecutar `init.sh` para `plan` y `build`.
+Para `build`, ademas se restringen comandos de git que modifican el repo:
+- `git commit` y `git push` requieren aprobacion explícita (`ask`)
+- `git status`, `git log`, `git diff`, `git add` funcionan automaticamente
 
-El agente `gentle-orchestrator` NO tiene esta restriccion, por lo que las skills SDD seguiran disponibles cuando uses ese orquestador.
+Esto se integra automaticamente al ejecutar `init.sh` para `plan` y `build`.
 
 Si queres permitir una skill SDD especifica en `plan`, podes cambiarla a `"allow"` despues de la instalacion.
 
