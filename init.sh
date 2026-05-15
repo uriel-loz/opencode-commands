@@ -7,6 +7,20 @@ COMMANDS_SRC="$SRC_DIR/commands"
 AGENT_SRC="$SRC_DIR/agent"
 CONFIG_FILE="$DEST_DIR/opencode.json"
 REPO_AGENTS="$SRC_DIR/config/opencode.agents.json"
+OVERRIDES_FILE="$SRC_DIR/config/.model-overrides.json"
+MODULES_DIR="$SRC_DIR/node_modules"
+DIST_DIR="$SRC_DIR/dist"
+
+if [ ! -d "$DIST_DIR" ]; then
+    echo "⚠️  dist/ no encontrado. Ejecutá 'npm run build' antes de ./init.sh"
+    exit 1
+fi
+
+echo "📦 Verificando dependencias..."
+if [ ! -d "$MODULES_DIR" ]; then
+    echo "   Instalando node_modules..."
+    npm install --prefix "$SRC_DIR" --silent
+fi
 
 mkdir -p "$DEST_DIR"
 
@@ -25,58 +39,15 @@ if [ ! -f "$REPO_AGENTS" ]; then
     exit 0
 fi
 
+echo "⚙️  Seleccioná los modelos para cada agente..."
+node "$DIST_DIR/configure.js"
+if [ $? -ne 0 ]; then
+    echo "⚠️  Configuración cancelada — no se modifyó opencode.json"
+    exit 1
+fi
+
 echo "🔗 Integrando agentes en opencode.json..."
-
-MERGE_SCRIPT=$(cat <<'EOF'
-const fs = require("fs");
-const path = require("path");
-
-const configPath = process.argv[1];
-const repoAgentsPath = process.argv[2];
-
-if (!fs.existsSync(configPath)) {
-    const schema = { "$schema": "https://opencode.ai/config.json", "agent": {} };
-    fs.writeFileSync(configPath, JSON.stringify(schema, null, 2));
-    console.log("   ✅ Creado opencode.json con schema base");
-}
-
-const existing = JSON.parse(fs.readFileSync(configPath, "utf8"));
-const repoAgents = JSON.parse(fs.readFileSync(repoAgentsPath, "utf8"));
-
-if (!existing.agent) existing.agent = {};
-
-const mergeDeep = (target, source) => {
-    Object.entries(source).forEach(([k, v]) => {
-        if (v && typeof v === 'object' && !Array.isArray(v)) {
-            if (!target[k]) target[k] = {};
-            mergeDeep(target[k], v);
-        } else {
-            target[k] = v;
-        }
-    });
-};
-
-const agentKeys = Object.keys(repoAgents);
-agentKeys.forEach(key => {
-    if (!existing.agent[key]) {
-        existing.agent[key] = {};
-    }
-    if (key === 'plan' || key === 'build') {
-        if (repoAgents[key].permission) {
-            if (!existing.agent[key].permission) existing.agent[key].permission = {};
-            mergeDeep(existing.agent[key].permission, repoAgents[key].permission);
-        }
-    } else {
-        Object.assign(existing.agent[key], repoAgents[key]);
-    }
-});
-
-fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
-console.log("   ✅ Agentes integrados: " + agentKeys.join(", "));
-EOF
-)
-
-node -e "$MERGE_SCRIPT" "$CONFIG_FILE" "$REPO_AGENTS"
+node "$DIST_DIR/merge.js" "$CONFIG_FILE" "$REPO_AGENTS" "$OVERRIDES_FILE"
 
 echo ""
 echo "✅ opencode-commands instalado"

@@ -1,0 +1,18 @@
+{
+  "type": "module",
+  "name": "opencode-commands",
+  "version": "1.0.0",
+  "description": "Command prompts para opencode agents",
+  "main": "dist/configure.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "inquirer": "^9.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.0",
+    "typescript": "^5.0.0"
+  }
+}

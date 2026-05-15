@@ -101,5 +101,24 @@
     "steps": 15,
     "temperature": 0.1,
     "top_p": 0.9
+  },
+  "explore": {
+    "model": "opencode-go/qwen3.6-plus",
+    "permission": {
+      "bash": "deny",
+      "edit": "deny",
+      "glob": "allow",
+      "grep": "allow",
+      "read": "allow",
+      "write": "deny"
+    },
+    "temperature": 0.2,
+    "top_p": 0.9
+  },
+  "general": {
+    "model": "opencode-go/qwen3.6-plus",
+    "steps": 12,
+    "temperature": 0.7,
+    "top_p": 0.95
   }
 }

@@ -9,6 +9,8 @@ Command prompts para opencode agents.
 | `commands/` | Prompts operativos para ejecutar tareas específicas |
 | `agent/` | Definiciones de subagentes para OpenCode |
 | `config/opencode.agents.json` | Configuración de agentes a integrar |
+| `src/` | Código TypeScript fuente |
+| `dist/` | JavaScript compilado (versionado) |
 
 ### commands/
 
@@ -26,20 +28,34 @@ Command prompts para opencode agents.
 | `review.md` | Revisa planes y proposals antes de implementar |
 | `task.md` | Convierte análisis en listas de tareas estructuradas |
 | `verify.md` | Verifica que el código coincida con el proposal |
+| `explore` | Configuración de agente de exploración de codebase |
+| `general` | Configuración de agente general-purpose |
 
 ## Instalación
 
 ```bash
-./init.sh
+npm run build   # solo la primera vez o tras cambiar src/
+./init.sh      # seleccionar modelos e integrar agentes
 ```
 
 Esto hace:
 
-1. Copia `commands/*.md` → `~/.config/opencode/commands/`
-2. Copia `agent/*.md` → `~/.config/opencode/agent/`
-3. Integra los subagentes en `~/.config/opencode/opencode.json`
+1. **Verifica que `dist/` exista** — si no existe, aborta con instrucciones
+2. Instala `node_modules/` si no existen
+3. Copia `commands/*.md` → `~/.config/opencode/commands/`
+4. Copia `agent/*.md` → `~/.config/opencode/agent/`
+5. **Pregunta interactivamente** qué modelo usar para cada agente, usando los providers registrados en `opencode` y los modelos disponibles
+6. Integra los subagentes en `~/.config/opencode/opencode.json`
    - Solo reemplaza/agrega los agentes del repo
    - Preserva intacto todo el resto de la configuración existente
+
+### Flujo interactivo de selección de modelos
+
+Al ejecutar `./init.sh`, `dist/configure.js`:
+1. Lee los providers autenticados desde `~/.local/share/opencode/auth.json`
+2. Consulta los modelos disponibles para cada provider via `opencode models <provider>`
+3. Pregunta agente por agente qué modelo asignar (con opción de mantener el actual del repo)
+4. Guarda los elegidos en `config/.model-overrides.json` para aplicar al merge
 
 ## Configuracion de skills y bash para `plan` y `build`
 
@@ -87,7 +103,6 @@ Si queres permitir una skill SDD especifica en `plan`, podes cambiarla a `"allow
 
 ## Requisitos
 
-- `node` disponible en PATH (necesario para el merge de JSON)
-- Un `opencode.json` existente en `~/.config/opencode/`
-  - Si no existe, se crea uno base con schema
-  - Si ya existe, se preserva todo su contenido y solo se agregan los agentes del repo
+- `node` y `npm` disponibles en PATH
+- `opencode` autenticado con al menos un provider (`opencode providers list` para verificar)
+- tras modificar `src/`, ejecutar `npm run build` y commitear `dist/` junto con los cambios en `src/`
