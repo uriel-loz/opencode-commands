@@ -18,6 +18,7 @@ interface ModelOverrides {
   agent: {
     [agent: string]: {
       model: string;
+      reasoning?: Record<string, unknown>;
     };
   };
 }
@@ -90,6 +91,12 @@ export function runMerge(
     }
     if (overrides.agent?.[key]?.model) {
       (existing.agent![key] as AgentRepoConfig).model = overrides.agent[key].model;
+    }
+    if (overrides.agent?.[key]?.reasoning) {
+      Object.assign(
+        existing.agent![key] as Record<string, unknown>,
+        overrides.agent[key].reasoning as Record<string, unknown>
+      );
     }
   });
 

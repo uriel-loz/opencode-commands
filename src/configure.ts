@@ -29,6 +29,7 @@ interface ModelOverrides {
   agent: {
     [agent: string]: {
       model: string;
+      reasoning?: Record<string, unknown>;
     };
   };
 }
@@ -40,6 +41,10 @@ interface OpenCodeUserConfig {
       [key: string]: unknown;
     };
   };
+}
+
+interface AgentReasoningSelection {
+  [agent: string]: string | null;
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -100,6 +105,83 @@ function getUserConfig(): OpenCodeUserConfig {
   }
 }
 
+function getProvider(model: string): "openai" | "anthropic" | "gemini" | null {
+  if (model.startsWith("openai/") || model.startsWith("github-copilot/")) return "openai";
+  if (model.startsWith("anthropic/")) return "anthropic";
+  if (model.includes("gemini")) return "gemini";
+  return null;
+}
+
+function modelSupportsReasoning(model: string): boolean {
+  return getProvider(model) !== null;
+}
+
+function getReasoningChoices(model: string): string[] {
+  if (getProvider(model) === "gemini") {
+    return ["Sin reasoning", "Bajo", "Alto"];
+  }
+  return ["Sin reasoning", "Bajo", "Medio", "Alto"];
+}
+
+function mapReasoningLevel(level: string, model: string): Record<string, unknown> | null {
+  if (level === "Sin reasoning") return null;
+  const provider = getProvider(model);
+  if (!provider) return null;
+
+  if (provider === "openai") {
+    const effortMap: Record<string, string> = { Bajo: "low", Medio: "medium", Alto: "high" };
+    return { reasoningEffort: effortMap[level] };
+  }
+
+  if (provider === "anthropic") {
+    const budgetMap: Record<string, number> = { Bajo: 1024, Medio: 4096, Alto: 16000 };
+    return {
+      thinking: { type: "enabled", budgetTokens: budgetMap[level] },
+    };
+  }
+
+  if (provider === "gemini") {
+    const budgetMap: Record<string, number> = { Bajo: 1024, Alto: 16000 };
+    return { thinkingConfig: { thinkingBudget: budgetMap[level] } };
+  }
+
+  return null;
+}
+
+function detectExistingReasoning(
+  model: string,
+  agentConfig: { [key: string]: unknown } | undefined
+): string | null {
+  if (!agentConfig) return null;
+  const provider = getProvider(model);
+  if (!provider) return null;
+
+  if (provider === "openai") {
+    const effort = agentConfig.reasoningEffort as string | undefined;
+    if (effort === "low") return "Bajo";
+    if (effort === "medium") return "Medio";
+    if (effort === "high") return "Alto";
+    return null;
+  }
+
+  if (provider === "anthropic") {
+    const thinking = agentConfig.thinking as { budgetTokens?: number } | undefined;
+    if (thinking?.budgetTokens && thinking.budgetTokens <= 2048) return "Bajo";
+    if (thinking?.budgetTokens && thinking.budgetTokens <= 8192) return "Medio";
+    if (thinking?.budgetTokens) return "Alto";
+    return null;
+  }
+
+  if (provider === "gemini") {
+    const thinkingConfig = agentConfig.thinkingConfig as { thinkingBudget?: number } | undefined;
+    if (thinkingConfig?.thinkingBudget && thinkingConfig.thinkingBudget <= 2048) return "Bajo";
+    if (thinkingConfig?.thinkingBudget) return "Alto";
+    return null;
+  }
+
+  return null;
+}
+
 function formatAgentLine(agent: string, model: string | null): string {
   const label = agent.padEnd(12, " ");
   return `${label}  ${model ?? "sin seleccionar"}`;
@@ -125,8 +207,16 @@ async function main(): Promise<void> {
   }
 
   const selections: Record<string, string | null> = {};
+  const reasoningSelections: AgentReasoningSelection = {};
   for (const agent of agentNames) {
-    selections[agent] = agents[agent]?.model ?? userConfig.agent?.[agent]?.model ?? null;
+    const model = agents[agent]?.model ?? userConfig.agent?.[agent]?.model ?? null;
+    selections[agent] = model;
+    if (model && modelSupportsReasoning(model)) {
+      reasoningSelections[agent] = detectExistingReasoning(
+        model,
+        userConfig.agent?.[agent] as { [key: string]: unknown } | undefined
+      );
+    }
   }
 
   while (true) {
@@ -174,6 +264,7 @@ async function main(): Promise<void> {
     if (provider === "Limpiar selección") {
       selections[selectedAgent] =
         agents[selectedAgent]?.model ?? userConfig.agent?.[selectedAgent]?.model ?? null;
+      reasoningSelections[selectedAgent] = null;
       continue;
     }
 
@@ -200,13 +291,44 @@ async function main(): Promise<void> {
     }
 
     selections[selectedAgent] = model;
+
+    if (modelSupportsReasoning(model)) {
+      const choices = getReasoningChoices(model);
+      if (reasoningSelections[selectedAgent]) {
+        choices.unshift("▸ mantener actual");
+      }
+      const defaultLevel = reasoningSelections[selectedAgent] ?? "Medio";
+
+      const { reasoning } = await Inquirer.prompt([
+        {
+          type: "list",
+          name: "reasoning",
+          message: `Nivel de reasoning para "${selectedAgent}"`,
+          choices: choices.filter((c) => c !== "▸ mantener actual" || reasoningSelections[selectedAgent]),
+          default: defaultLevel,
+        },
+      ]);
+
+      if (reasoning !== "▸ mantener actual") {
+        reasoningSelections[selectedAgent] = reasoning;
+      }
+    } else {
+      reasoningSelections[selectedAgent] = null;
+    }
   }
 
   const selected = agentNames
     .filter((a) => selections[a] != null)
     .reduce<ModelOverrides["agent"]>((acc, agent) => {
       const m = selections[agent];
-      if (m) acc[agent] = { model: m };
+      if (!m) return acc;
+      const entry: { model: string; reasoning?: Record<string, unknown> } = { model: m };
+      const level = reasoningSelections[agent];
+      if (level) {
+        const mapped = mapReasoningLevel(level, m);
+        if (mapped) entry.reasoning = mapped;
+      }
+      acc[agent] = entry;
       return acc;
     }, {});
 

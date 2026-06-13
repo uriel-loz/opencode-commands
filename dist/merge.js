@@ -55,6 +55,9 @@ export function runMerge(configPath, repoAgentsPath, overridesPath) {
         if (overrides.agent?.[key]?.model) {
             existing.agent[key].model = overrides.agent[key].model;
         }
+        if (overrides.agent?.[key]?.reasoning) {
+            Object.assign(existing.agent[key], overrides.agent[key].reasoning);
+        }
     });
     writeFileSync(configPath, JSON.stringify(existing, null, 2));
     console.log("   ✅ Agentes integrados: " + agentKeys.join(", "));
