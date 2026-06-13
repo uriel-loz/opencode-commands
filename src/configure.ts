@@ -33,10 +33,23 @@ interface ModelOverrides {
   };
 }
 
+interface OpenCodeUserConfig {
+  agent?: {
+    [agent: string]: {
+      model?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const AUTH_PATH = path.join(process.env.HOME ?? "", ".local/share/opencode/auth.json");
 const AGENTS_PATH = path.join(__dirname, "../config/opencode.agents.json");
 const OVERRIDES_PATH = path.join(__dirname, "../config/.model-overrides.json");
+const USER_CONFIG_PATH = path.join(
+  process.env.HOME ?? "",
+  ".config/opencode/opencode.json"
+);
 
 function getRegisteredProviders(): string[] {
   try {
@@ -79,6 +92,14 @@ function getAgents(): AgentsConfig {
   }
 }
 
+function getUserConfig(): OpenCodeUserConfig {
+  try {
+    return JSON.parse(readFileSync(USER_CONFIG_PATH, "utf8")) as OpenCodeUserConfig;
+  } catch {
+    return {};
+  }
+}
+
 function formatAgentLine(agent: string, model: string | null): string {
   const label = agent.padEnd(12, " ");
   return `${label}  ${model ?? "sin seleccionar"}`;
@@ -96,6 +117,7 @@ async function main(): Promise<void> {
   }
 
   const agents = getAgents();
+  const userConfig = getUserConfig();
   const agentNames = Object.keys(agents);
   if (agentNames.length === 0) {
     console.log("⚠️  No se encontraron agentes en config/opencode.agents.json");
@@ -104,7 +126,7 @@ async function main(): Promise<void> {
 
   const selections: Record<string, string | null> = {};
   for (const agent of agentNames) {
-    selections[agent] = agents[agent]?.model ?? null;
+    selections[agent] = agents[agent]?.model ?? userConfig.agent?.[agent]?.model ?? null;
   }
 
   while (true) {
@@ -150,7 +172,8 @@ async function main(): Promise<void> {
     ]);
 
     if (provider === "Limpiar selección") {
-      selections[selectedAgent] = agents[selectedAgent]?.model ?? null;
+      selections[selectedAgent] =
+        agents[selectedAgent]?.model ?? userConfig.agent?.[selectedAgent]?.model ?? null;
       continue;
     }
 
