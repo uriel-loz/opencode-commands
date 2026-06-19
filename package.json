@@ -6,7 +6,8 @@
   "main": "dist/configure.js",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "start": "node scripts/install.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1"

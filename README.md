@@ -35,7 +35,7 @@ Command prompts para opencode agents.
 
 ```bash
 npm run build   # solo la primera vez o tras cambiar src/
-./init.sh      # seleccionar modelos e integrar agentes
+npm run start   # seleccionar modelos e integrar agentes
 ```
 
 Esto hace:
@@ -51,7 +51,7 @@ Esto hace:
 
 ### Flujo interactivo de selección de modelos
 
-Al ejecutar `./init.sh`, `dist/configure.js`:
+Al ejecutar `npm run start`, `dist/configure.js`:
 1. Lee los providers autenticados desde `~/.local/share/opencode/auth.json`
 2. Consulta los modelos disponibles para cada provider via `opencode models <provider>`
 3. Pregunta agente por agente qué modelo asignar (con opción de mantener el actual del repo)
@@ -97,7 +97,7 @@ Para `build`, ademas se restringen comandos de git que modifican el repo:
 - `git commit` y `git push` requieren aprobacion explícita (`ask`)
 - `git status`, `git log`, `git diff`, `git add` funcionan automaticamente
 
-Esto se integra automaticamente al ejecutar `init.sh` para `plan` y `build`.
+Esto se integra automaticamente al ejecutar `npm run start` para `plan` y `build`.
 
 Si queres permitir una skill SDD especifica en `plan`, podes cambiarla a `"allow"` despues de la instalacion.
 
