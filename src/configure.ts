@@ -318,7 +318,7 @@ async function main(): Promise<void> {
   const selections: Record<string, string | null> = {};
   const reasoningSelections: AgentReasoningSelection = {};
   for (const agent of agentNames) {
-    const model = agents[agent]?.model ?? userConfig.agent?.[agent]?.model ?? null;
+    const model = userConfig.agent?.[agent]?.model ?? agents[agent]?.model ?? null;
     selections[agent] = model;
     if (model && modelSupportsReasoning(model)) {
       reasoningSelections[agent] = detectExistingReasoning(
@@ -364,7 +364,7 @@ async function main(): Promise<void> {
 
         if (providerResult.action === "clear") {
           selections[selectedAgent] =
-            agents[selectedAgent]?.model ?? userConfig.agent?.[selectedAgent]?.model ?? null;
+            userConfig.agent?.[selectedAgent]?.model ?? agents[selectedAgent]?.model ?? null;
           reasoningSelections[selectedAgent] = null;
           continue;
         }
@@ -409,9 +409,11 @@ async function main(): Promise<void> {
 
                 if (reasoningResult.action === "select" && reasoningResult.value) {
                   reasoningSelections[selectedAgent] = reasoningResult.value;
+                  inSubmenu = false;
                 }
               } else {
                 reasoningSelections[selectedAgent] = null;
+                inSubmenu = false;
               }
 
               inModelMenu = false;
