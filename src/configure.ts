@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Inquirer from "inquirer";
+import * as p from "@clack/prompts";
 
 interface AuthEntry {
   type: string;
@@ -187,14 +187,123 @@ function formatAgentLine(agent: string, model: string | null): string {
   return `${label}  ${model ?? "sin seleccionar"}`;
 }
 
+type MenuAction = "back" | "select" | "clear" | "confirm" | "exit";
+
+interface MenuResult {
+  action: MenuAction;
+  value?: string;
+}
+
+async function confirmExit(): Promise<boolean> {
+  const result = await p.confirm({
+    message: "¿Deseás salir?",
+    initialValue: false,
+  });
+  if (p.isCancel(result)) {
+    return true;
+  }
+  return result;
+}
+
+async function showMainMenu(agentNames: string[], selections: Record<string, string | null>): Promise<MenuResult> {
+  const menuChoices: { value: string; label: string }[] = agentNames.map((agent) => ({
+    value: `agent:${agent}`,
+    label: formatAgentLine(agent, selections[agent]),
+  }));
+  menuChoices.push({ value: "action:confirm", label: "Confirmar e instalar" });
+  menuChoices.push({ value: "action:exit", label: "Salir sin guardar" });
+
+  const choice: unknown = await p.select({
+    message: "Seleccioná un agente para configurar",
+    options: menuChoices,
+  });
+
+  if (p.isCancel(choice)) {
+    return { action: "back" };
+  }
+
+  const choiceStr = choice as string;
+  if (choiceStr.startsWith("action:")) {
+    const action = choiceStr.replace("action:", "") as "confirm" | "exit";
+    return { action };
+  }
+
+  const agent = choiceStr.replace("agent:", "");
+  return { action: "select", value: agent };
+}
+
+async function showProviderMenu(agent: string, catalog: Record<string, string[]>): Promise<MenuResult> {
+  const providerChoices: { value: string; label: string }[] = Object.keys(catalog).map((provider) => ({
+    value: `provider:${provider}`,
+    label: provider,
+  }));
+  providerChoices.push({ value: "action:clear", label: "Limpiar selección" });
+
+  const provider: unknown = await p.select({
+    message: `Provider para "${agent}"`,
+    options: providerChoices,
+  });
+
+  if (p.isCancel(provider)) {
+    return { action: "back" };
+  }
+
+  const providerStr = provider as string;
+  if (providerStr.startsWith("action:")) {
+    const action = providerStr.replace("action:", "") as "clear";
+    return { action };
+  }
+
+  const providerName = providerStr.replace("provider:", "");
+  return { action: "select", value: providerName };
+}
+
+async function showModelMenu(agent: string, provider: string, modelChoices: string[]): Promise<MenuResult> {
+  const choices: { value: string; label: string }[] = modelChoices.map((model) => ({
+    value: `model:${model}`,
+    label: model,
+  }));
+
+  const model: unknown = await p.select({
+    message: `Modelo para "${agent}" (provider: ${provider})`,
+    options: choices,
+  });
+
+  if (p.isCancel(model)) {
+    return { action: "back" };
+  }
+
+  const modelName = (model as string).replace("model:", "");
+  return { action: "select", value: modelName };
+}
+
+async function showReasoningMenu(agent: string, model: string, choices: string[]): Promise<MenuResult> {
+  const modelChoices: { value: string; label: string }[] = choices.map((choice) => ({
+    value: `reasoning:${choice}`,
+    label: choice,
+  }));
+
+  const reasoning: unknown = await p.select({
+    message: `Nivel de reasoning para "${agent}"`,
+    options: modelChoices,
+  });
+
+  if (p.isCancel(reasoning)) {
+    return { action: "back" };
+  }
+
+  const level = (reasoning as string).replace("reasoning:", "");
+  return { action: "select", value: level };
+}
+
 async function main(): Promise<void> {
-  console.log("\n🔧 Configurador de modelos para opencode-commands\n");
+  p.intro("🔧 Configurador de modelos para opencode-commands");
 
   const catalog = buildModelCatalog();
   const providerNames = Object.keys(catalog);
   if (providerNames.length === 0) {
-    console.log("⚠️  No se detectaron providers registrados en auth.json.");
-    console.log("   Ejecutá `opencode providers login` para autenticar un provider.");
+    p.log.warn("No se detectaron providers registrados en auth.json.");
+    p.log.info("Ejecutá `opencode providers login` para autenticar un provider.");
     process.exit(1);
   }
 
@@ -202,7 +311,7 @@ async function main(): Promise<void> {
   const userConfig = getUserConfig();
   const agentNames = Object.keys(agents);
   if (agentNames.length === 0) {
-    console.log("⚠️  No se encontraron agentes en config/opencode.agents.json");
+    p.log.warn("No se encontraron agentes en config/opencode.agents.json");
     process.exit(1);
   }
 
@@ -219,101 +328,97 @@ async function main(): Promise<void> {
     }
   }
 
-  while (true) {
-    const menuChoices: string[] = agentNames.map((agent) =>
-      formatAgentLine(agent, selections[agent])
-    );
-    menuChoices.push("Confirmar e instalar");
-    menuChoices.push("Salir sin guardar");
+  let exitConfirmed = false;
 
-    const { choice } = await Inquirer.prompt([
-      {
-        type: "list",
-        name: "choice",
-        message: "Seleccioná un agente para configurar",
-        choices: menuChoices,
-      },
-    ]);
+  while (!exitConfirmed) {
+    const mainResult = await showMainMenu(agentNames, selections);
 
-    if (choice === "Salir sin guardar") {
-      console.log("\n👋 Operaciones canceladas. No se hizo ningún cambio.");
+    if (mainResult.action === "back") {
+      const shouldExit = await confirmExit();
+      if (shouldExit) {
+        exitConfirmed = true;
+        break;
+      }
+      continue;
+    }
+
+    if (mainResult.action === "exit") {
+      p.outro("👋 Operaciones canceladas. No se hizo ningún cambio.");
       process.exit(0);
     }
 
-    if (choice === "Confirmar e instalar") {
+    if (mainResult.action === "confirm") {
       break;
     }
 
-    const selectedAgent = agentNames.find((a) =>
-      formatAgentLine(a, selections[a]) === choice
-    );
-    if (!selectedAgent) continue;
+    if (mainResult.action === "select" && mainResult.value) {
+      const selectedAgent = mainResult.value;
+      let inSubmenu = true;
 
-    const providerChoices = Object.keys(catalog);
-    providerChoices.push("Limpiar selección");
+      while (inSubmenu) {
+        const providerResult = await showProviderMenu(selectedAgent, catalog);
 
-    const { provider } = await Inquirer.prompt([
-      {
-        type: "list",
-        name: "provider",
-        message: `Provider para "${selectedAgent}"`,
-        choices: providerChoices,
-      },
-    ]);
+        if (providerResult.action === "back") {
+          break;
+        }
 
-    if (provider === "Limpiar selección") {
-      selections[selectedAgent] =
-        agents[selectedAgent]?.model ?? userConfig.agent?.[selectedAgent]?.model ?? null;
-      reasoningSelections[selectedAgent] = null;
-      continue;
-    }
+        if (providerResult.action === "clear") {
+          selections[selectedAgent] =
+            agents[selectedAgent]?.model ?? userConfig.agent?.[selectedAgent]?.model ?? null;
+          reasoningSelections[selectedAgent] = null;
+          continue;
+        }
 
-    const modelChoices: string[] = catalog[provider] ?? [];
-    const currentForAgent = selections[selectedAgent];
-    if (currentForAgent && modelChoices.includes(currentForAgent)) {
-      modelChoices.unshift("▸ mantener actual");
-    } else if (!currentForAgent) {
-      modelChoices.unshift("ninguno disponible");
-    }
-    modelChoices.push("Volver al menú");
+        if (providerResult.action === "select" && providerResult.value) {
+          const provider = providerResult.value;
+          const availableModels = catalog[provider] ?? [];
+          const modelChoices: string[] = [...availableModels];
+          const currentForAgent = selections[selectedAgent];
+          if (currentForAgent && modelChoices.includes(currentForAgent)) {
+            modelChoices.unshift("▸ mantener actual");
+          } else if (!currentForAgent) {
+            modelChoices.unshift("ninguno disponible");
+          }
 
-    const { model } = await Inquirer.prompt([
-      {
-        type: "list",
-        name: "model",
-        message: `Modelo para "${selectedAgent}" (provider: ${provider})`,
-        choices: modelChoices,
-      },
-    ]);
+          let inModelMenu = true;
+          while (inModelMenu) {
+            const modelResult = await showModelMenu(selectedAgent, provider, modelChoices);
 
-    if (model === "Volver al menú" || model === "▸ mantener actual") {
-      continue;
-    }
+            if (modelResult.action === "back") {
+              break;
+            }
 
-    selections[selectedAgent] = model;
+            if (modelResult.action === "select" && modelResult.value) {
+              const model = modelResult.value;
 
-    if (modelSupportsReasoning(model)) {
-      const choices = getReasoningChoices(model);
-      if (reasoningSelections[selectedAgent]) {
-        choices.unshift("▸ mantener actual");
+              if (model === "▸ mantener actual") {
+                continue;
+              }
+
+              selections[selectedAgent] = model;
+
+              if (modelSupportsReasoning(model)) {
+                const reasoningChoices = getReasoningChoices(model);
+                const defaultLevel = reasoningSelections[selectedAgent] ?? "Medio";
+
+                const reasoningResult = await showReasoningMenu(selectedAgent, model, reasoningChoices);
+
+                if (reasoningResult.action === "back") {
+                  continue;
+                }
+
+                if (reasoningResult.action === "select" && reasoningResult.value) {
+                  reasoningSelections[selectedAgent] = reasoningResult.value;
+                }
+              } else {
+                reasoningSelections[selectedAgent] = null;
+              }
+
+              inModelMenu = false;
+            }
+          }
+        }
       }
-      const defaultLevel = reasoningSelections[selectedAgent] ?? "Medio";
-
-      const { reasoning } = await Inquirer.prompt([
-        {
-          type: "list",
-          name: "reasoning",
-          message: `Nivel de reasoning para "${selectedAgent}"`,
-          choices: choices.filter((c) => c !== "▸ mantener actual" || reasoningSelections[selectedAgent]),
-          default: defaultLevel,
-        },
-      ]);
-
-      if (reasoning !== "▸ mantener actual") {
-        reasoningSelections[selectedAgent] = reasoning;
-      }
-    } else {
-      reasoningSelections[selectedAgent] = null;
     }
   }
 
@@ -335,13 +440,10 @@ async function main(): Promise<void> {
   const overrides: ModelOverrides = { agent: selected };
   writeFileSync(OVERRIDES_PATH, JSON.stringify(overrides, null, 2));
 
-  console.log("\n✅ Modelos guardados en config/.model-overrides.json");
-  console.log(
-    `   ${Object.keys(selected).length}/${agentNames.length} agentes con modelo elegido\n`
-  );
+  p.outro(`✅ Modelos guardados en config/.model-overrides.json (${Object.keys(selected).length}/${agentNames.length} agentes)`);
 }
 
 main().catch((err) => {
-  console.error("Error:", err.message);
+  p.log.error(`Error: ${err.message}`);
   process.exit(1);
 });

@@ -9,10 +9,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "inquirer": "^9.2.0"
+    "@clack/prompts": "^1.5.1"
   },
   "devDependencies": {
-    "@types/inquirer": "^9.0.0",
+    "@types/node": "^25.9.3",
     "typescript": "^5.0.0"
   }
 }
